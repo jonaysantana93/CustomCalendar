@@ -13,11 +13,6 @@ import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import androidx.recyclerview.widget.RecyclerView.Orientation
-import com.jonay.customcalendar.adapters.MonthAdapter
-import com.jonay.customcalendar.adapters.YearAdapter
 import com.jonay.customcalendar.common.utils.viewBinding.viewBinding
 import com.jonay.customcalendar.databinding.CustomCalendarTextItemBinding
 import com.jonay.customcalendar.databinding.FragmentCustomCalendarBinding
@@ -26,6 +21,7 @@ import com.jonay.customcalendar.enums.StartDayOfWeek
 import com.jonay.customcalendar.extensions.getFirstDayOfMonth
 import com.jonay.customcalendar.extensions.getNameDaysOfTheWeek
 import com.jonay.customcalendar.extensions.getTotalDaysInMonth
+import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
@@ -81,42 +77,12 @@ class CustomCalendar(
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setYearRecyclerView()
-        setMonthRecyclerView()
         initCalendarView()
     }
 
-    private fun setYearRecyclerView() {
-        val yearsList = Calendar.getInstance().getYearsList()
-        val layout = LinearLayoutManager(context,LinearLayoutManager.HORIZONTAL,false)
-        val yearAdapter = YearAdapter(yearsList).apply {
-            onYearClicked = {
-            }
-        }
-
-        binding.yearsHero.apply {
-            layoutManager = layout
-            adapter = yearAdapter
-        }
-    }
-
-    private fun setMonthRecyclerView() {
-        val monthList = Calendar.getInstance().getNamesOfMonths()
-        val layout = LinearLayoutManager(context,LinearLayoutManager.HORIZONTAL,false)
-        val monthAdapter = MonthAdapter(monthList).apply {
-            onMonthClicked = {
-                calendar.set(Calendar.MONTH, it)
-                initCalendarView()
-            }
-        }
-
-        binding.monthsHero.apply {
-            layoutManager = layout
-            adapter = monthAdapter
-        }
-    }
-
+    @SuppressLint("SimpleDateFormat")
     private fun initCalendarView() {
+        binding.monthName.text = SimpleDateFormat("MMMM").format(calendar.time)
         buildDaysOfWeeks()
         buildAllDaysOfMonths()
     }
