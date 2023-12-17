@@ -15,15 +15,16 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.recyclerview.widget.RecyclerView.Orientation
-import com.jonay.customcalendar.adapters.MonthAdapter
-import com.jonay.customcalendar.adapters.YearAdapter
+import com.jonay.customcalendar.adapter.month.MonthAdapter
+import com.jonay.customcalendar.adapter.year.YearAdapter
 import com.jonay.customcalendar.common.utils.viewBinding.viewBinding
 import com.jonay.customcalendar.databinding.CustomCalendarTextItemBinding
 import com.jonay.customcalendar.databinding.FragmentCustomCalendarBinding
 import com.jonay.customcalendar.enums.Months
 import com.jonay.customcalendar.enums.StartDayOfWeek
 import com.jonay.customcalendar.extensions.getFirstDayOfMonth
+import com.jonay.customcalendar.extensions.getListOfMonths
+import com.jonay.customcalendar.extensions.getListOfYears
 import com.jonay.customcalendar.extensions.getNameDaysOfTheWeek
 import com.jonay.customcalendar.extensions.getTotalDaysInMonth
 import java.util.Calendar
@@ -81,41 +82,49 @@ class CustomCalendar(
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setYearRecyclerView()
-        setMonthRecyclerView()
+        initYearRecycler()
+        initMonthRecycler()
         initCalendarView()
     }
 
-    private fun setYearRecyclerView() {
-        val yearsList = Calendar.getInstance().getYearsList()
-        val layout = LinearLayoutManager(context,LinearLayoutManager.HORIZONTAL,false)
-        val yearAdapter = YearAdapter(yearsList).apply {
-            onYearClicked = {
-            }
-        }
+    private fun initMonthRecycler() {
+        val monthAdapter = MonthAdapter(Calendar.getInstance().getListOfMonths())
 
-        binding.yearsHero.apply {
-            layoutManager = layout
-            adapter = yearAdapter
-        }
-    }
-
-    private fun setMonthRecyclerView() {
-        val monthList = Calendar.getInstance().getNamesOfMonths()
-        val layout = LinearLayoutManager(context,LinearLayoutManager.HORIZONTAL,false)
-        val monthAdapter = MonthAdapter(monthList).apply {
-            onMonthClicked = {
-                calendar.set(Calendar.MONTH, it)
-                initCalendarView()
-            }
-        }
-
-        binding.monthsHero.apply {
-            layoutManager = layout
+        binding.monthRecyclerView.apply {
+            layoutManager = LinearLayoutManager(requireContext(), RecyclerView.HORIZONTAL, false)
             adapter = monthAdapter
+            addOnScrollListener(monthScrollListener)
         }
     }
 
+    private val monthScrollListener = object: RecyclerView.OnScrollListener() {
+        override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+            super.onScrolled(recyclerView, dx, dy)
+            val positionMonth = (recyclerView.layoutManager as LinearLayoutManager).findFirstVisibleItemPosition()
+            (binding.yearRecyclerView.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(positionMonth, 0)
+        }
+    }
+
+    private fun initYearRecycler() {
+        val calendar = Calendar.getInstance()
+        val yearAdapter = YearAdapter(calendar.getListOfYears(), Calendar.getInstance().get(Calendar.YEAR).toString())
+
+        binding.yearRecyclerView.apply {
+            layoutManager = LinearLayoutManager(requireContext(), RecyclerView.HORIZONTAL, false)
+            adapter = yearAdapter
+            addOnScrollListener(yearScrollListener)
+        }
+    }
+
+    private val yearScrollListener = object: RecyclerView.OnScrollListener() {
+        override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+            super.onScrolled(recyclerView, dx, dy)
+            val positionYear = (recyclerView.layoutManager as LinearLayoutManager).findFirstVisibleItemPosition()
+            (binding.monthRecyclerView.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(positionYear, 0)
+        }
+    }
+
+    @SuppressLint("SimpleDateFormat")
     private fun initCalendarView() {
         buildDaysOfWeeks()
         buildAllDaysOfMonths()
