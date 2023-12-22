@@ -6,6 +6,18 @@
     android:orientation="vertical"
     android:paddingVertical="8dp">
 
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/monthsRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/yearsRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"/>
+
     <TextView
         android:id="@+id/monthName"
         android:layout_width="match_parent"
