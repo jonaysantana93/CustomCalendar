@@ -18,5 +18,6 @@ enum class Months(val value: Int) {
 
     companion object {
         fun getCurrentMonth(): Months = entries.first { it.value == Calendar.getInstance().get(Calendar.MONTH) }
+        fun getCustomMonth(month: Int) = entries.first { it.value == month }
     }
 }

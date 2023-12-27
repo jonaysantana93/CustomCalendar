@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.jonay.customcalendar.adapter.LogAdapter
 import com.jonay.customcalendar.common.utils.viewBinding.viewBinding
 import com.jonay.customcalendar.databinding.ActivityMainBinding
+import com.jonay.customcalendar.enums.Months
 
 class MainActivity : AppCompatActivity() {
     private val binding by viewBinding(ActivityMainBinding::inflate)
@@ -24,7 +25,15 @@ class MainActivity : AppCompatActivity() {
     private fun initCustomCalendar() {
         val list = listOf(22,25,30)
 
-        val customCalendar = CustomCalendar(this, listOfEvents = list).apply {
+        val options = CustomCalendarOptions().apply {
+            month = Months.FEBRUARY
+        }
+
+        val customCalendar = CustomCalendar(
+            context = this,
+            options = options,
+            listOfEvents = list
+        ).apply {
             onClick = {
                 logList.add("Day: $it clicked")
                 myAdapter.updateList(logList)

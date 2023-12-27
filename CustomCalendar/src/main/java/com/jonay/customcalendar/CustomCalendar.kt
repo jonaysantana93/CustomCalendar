@@ -2,43 +2,38 @@ package com.jonay.customcalendar
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Color
-import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.GridLayout
 import android.widget.TextView
-import androidx.annotation.ColorInt
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView.LayoutManager
 import com.jonay.customcalendar.adapter.month.MonthAdapter
 import com.jonay.customcalendar.adapter.year.YearAdapter
 import com.jonay.customcalendar.common.utils.viewBinding.viewBinding
 import com.jonay.customcalendar.databinding.CustomCalendarTextItemBinding
 import com.jonay.customcalendar.databinding.FragmentCustomCalendarBinding
 import com.jonay.customcalendar.enums.Months
-import com.jonay.customcalendar.enums.StartDayOfWeek
 import com.jonay.customcalendar.extensions.checkIfIsaPassDay
 import com.jonay.customcalendar.extensions.checkListOfEvents
-import com.jonay.customcalendar.extensions.getFirstDayOfMonth
+import com.jonay.customcalendar.extensions.getColumPosition
+import com.jonay.customcalendar.extensions.getDrawableResource
+import com.jonay.customcalendar.extensions.getDayOfWeek
 import com.jonay.customcalendar.extensions.getNameDaysOfTheWeek
-import com.jonay.customcalendar.extensions.getNamesOfMonths
 import com.jonay.customcalendar.extensions.getResource
 import com.jonay.customcalendar.extensions.getTotalDaysInMonth
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Locale
 
 
 class CustomCalendar(
     private val context: Context,
-    private val startDay: StartDayOfWeek = StartDayOfWeek.SUNDAY,
-    private val month: Months = Months.getCurrentMonth(),
+    private val options: CustomCalendarOptions = CustomCalendarOptions(),
     private val listOfEvents: List<Int> = listOf()
 ) : Fragment(R.layout.fragment_custom_calendar) {
 
@@ -46,69 +41,44 @@ class CustomCalendar(
 
     var onClick: ((day: Int) -> Unit)? = null
 
-    private var calendar: Calendar = Calendar.getInstance().apply { set(Calendar.MONTH, month.value) }
+    private var calendar: Calendar = Calendar.getInstance().apply { set(Calendar.MONTH, options.month.value) }
     private var cellWidth = context.resources.getDimensionPixelSize(R.dimen.grid_cell_width)
     private var cellHeight = context.resources.getDimensionPixelSize(R.dimen.grid_cell_height)
     private val currentDay: Int = Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
     private var daySelected: Int? = currentDay
     private var daySelectedView: CustomCalendarTextItemBinding? = null
 
-
-// -----------------------------------------
-// ------ CUSTOMIZABLE VARIABLE BLOCK ------
-// -----------------------------------------
-
-    private var dayCellBackground:Int = R.color.white
-    fun setDayCellBackgroundColor(value: Int) {
-        dayCellBackground = value
-    }
-
-    private var dayTextColor: Int = R.color.black
-    fun setDayTextColor(value: Int){
-        dayTextColor = value
-    }
-
-    private var dayCellBackgroundWithEvent: Int = R.color.green
-    fun setDayCellBackgroundWithEvent(value: Int) {
-        dayCellBackgroundWithEvent = value
-    }
-
-    private var dayTextColorWithEvent: Int = R.color.white
-    fun setDayTextColorWithEvent(value: Int) {
-        dayTextColorWithEvent = value
-    }
-
-    private var passDayLockTextColor: Int = R.color.light_gray
-    fun setPassDayLockTextColor(value: Int){
-        passDayLockTextColor = value
-    }
-
-    @SuppressLint("UseCompatLoadingForDrawables")
-    private var currentDayCellCustomDesign: Drawable? = context.getDrawable(R.drawable.cardview_border)
-    fun setCurrentDayCellBackgroundColor(design: Drawable? = null) {
-        design?.let {
-            currentDayCellCustomDesign = design
-        }
-    }
-// -----------------------------------------
-// -----------------------------------------
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        initCalendarView()
+        buildMonthsRecyclerView()
+        buildYearRecyclerView()
+
+
+        val dayOfWeek = calendar.apply { set(2023, Calendar.FEBRUARY,16) }.get(Calendar.DAY_OF_WEEK)
+        val initialColum = (dayOfWeek-1)%7
+
+        Log.d("JOnay", "->")
+//        initCalendarView()
     }
 
     @SuppressLint("SimpleDateFormat")
     private fun initCalendarView() {
-        buildMonthsRecyclerView()
-        buildYearRecyclerView()
-        binding.monthName.text = SimpleDateFormat("MMMM").format(calendar.time)
+        binding.apply {
+            monthName.text = SimpleDateFormat("MMMM").format(calendar.time)
+            gridCalendar.removeAllViews()
+        }
         buildDaysOfWeeks()
         buildAllDaysOfMonths()
     }
 
     private fun buildMonthsRecyclerView() = binding.apply {
-        val customAdapter = MonthAdapter()
+        val customAdapter = MonthAdapter().apply {
+            onClick = {
+                options.month = Months.getCustomMonth(it)
+                calendar.set(Calendar.MONTH, options.month.value)
+                initCalendarView()
+            }
+        }
 
         monthsRecyclerView.apply {
             layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
@@ -126,7 +96,7 @@ class CustomCalendar(
     }
 
     private fun buildDaysOfWeeks() {
-        val daysOfWeeks = calendar.getNameDaysOfTheWeek()
+        val daysOfWeeks = calendar.getNameDaysOfTheWeek(options.startDay.value)
         daysOfWeeks.forEachIndexed { i, name ->
             val textView = TextView(context).apply {
                 text = name
@@ -148,12 +118,25 @@ class CustomCalendar(
     }
 
     private fun buildAllDaysOfMonths() {
-        val firstDay = calendar.getFirstDayOfMonth(startDay.value)
         val totalDays = calendar.getTotalDaysInMonth()
 
         for (day in 1..totalDays) {
-            val column = (firstDay + day - 1) % 7
-            val row = (firstDay + day - 1) / 7 + 1
+            val dayOfWeek = calendar.getDayOfWeek(day)
+
+            /*
+            day = 1
+            Colum = (this + 7 - startDay) % 7
+
+            Row = (  ) + 1
+
+
+
+                (firstDay + day - 1) / 7 + 1
+            */
+
+
+            val column = day.getColumPosition(options.startDay.value, dayOfWeek)
+            val row = (dayOfWeek + day - 1) / 7 + 1
 
             val params = GridLayout.LayoutParams().apply {
                 rowSpec = GridLayout.spec(GridLayout.UNDEFINED, GridLayout.FILL, 1f)
@@ -174,13 +157,13 @@ class CustomCalendar(
         CustomCalendarTextItemBinding.inflate(LayoutInflater.from(context)).apply {
             val day = this@buildCustomView
 
-            dayContainer.setCardBackgroundColor(dayCellBackground.getResource(context))
+            dayContainer.setCardBackgroundColor(options.dayCellBackground.getResource(context))
             dayText.apply {
                 text = day.toString()
-                setTextColor(dayTextColor.getResource(context))
+                setTextColor(options.dayTextColor.getResource(context))
             }
 
-            if (day.checkIfIsaPassDay(this, currentDay, passDayLockTextColor)) {
+            if (day.checkIfIsaPassDay(this, currentDay, options.passDayLockTextColor)) {
                 day.checkIfIsCurrentDay(this)
                 day.checkIfHaveEvent(this)
                 root.onclickListener(day, this)
@@ -189,16 +172,17 @@ class CustomCalendar(
 
     private fun Int.checkIfIsCurrentDay(binding: CustomCalendarTextItemBinding) {
         if (this == currentDay) {
-            binding.dayContainer.background = currentDayCellCustomDesign
+            binding.dayContainer.background = options.currentDayCellCustomDesign.getDrawableResource(context)
+            binding.dayText.setTextColor(options.dayTextColor.getResource(context))
             daySelectedView = binding
         }
     }
 
     private fun Int.checkIfHaveEvent(binding : CustomCalendarTextItemBinding) {
-        if(this.checkListOfEvents(listOfEvents)){
+        if(this.checkListOfEvents(listOfEvents, currentDay)){
             binding.apply {
-                dayContainer.setCardBackgroundColor(dayCellBackgroundWithEvent.getResource(context))
-                dayText.setTextColor(dayTextColorWithEvent.getResource(context))
+                dayContainer.setCardBackgroundColor(options.dayCellBackgroundWithEvent.getResource(context))
+                dayText.setTextColor(options.dayTextColorWithEvent.getResource(context))
             }
         }
     }
@@ -226,9 +210,9 @@ class CustomCalendar(
             dayContainer.background = ContextCompat.getDrawable(context, R.drawable.cardview_border)
             dayText.setTextColor(R.color.black.getResource(context))
             daySelectedView = this
-        } else if (day.checkListOfEvents(listOfEvents)){
-            dayContainer.setCardBackgroundColor(dayCellBackgroundWithEvent.getResource(context))
-            dayText.setTextColor(dayTextColorWithEvent.getResource(context))
+        } else if (day.checkListOfEvents(listOfEvents, currentDay)){
+            dayContainer.setCardBackgroundColor(options.dayCellBackgroundWithEvent.getResource(context))
+            dayText.setTextColor(options.dayTextColorWithEvent.getResource(context))
         } else  {
             dayContainer.setCardBackgroundColor(R.color.white.getResource(context))
             dayText.setTextColor(R.color.black.getResource(context))
