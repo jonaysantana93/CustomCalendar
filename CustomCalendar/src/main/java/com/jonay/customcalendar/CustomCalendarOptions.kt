@@ -4,10 +4,12 @@ import androidx.annotation.ColorRes
 import androidx.annotation.DrawableRes
 import com.jonay.customcalendar.enums.Months
 import com.jonay.customcalendar.enums.StartDayOfWeek
+import java.util.Calendar
 
 class CustomCalendarOptions {
-    var startDay: StartDayOfWeek = StartDayOfWeek.MONDAY
+//    val startDay: StartDayOfWeek = StartDayOfWeek.SUNDAY
     var month: Months = Months.getCurrentMonth()
+    var year: Int = Calendar.getInstance().get(Calendar.YEAR)
     @ColorRes var dayCellBackground:Int = R.color.white
     @ColorRes var dayTextColor: Int = R.color.black
     @ColorRes var dayCellBackgroundWithEvent: Int = R.color.green

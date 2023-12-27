@@ -7,11 +7,17 @@ import com.jonay.customcalendar.common.interfaces.ViewHolderInitializerInterface
 import com.jonay.customcalendar.databinding.CustomCalendarMonthYearTextItemBinding
 
 class YearAdapter: RecyclerView.Adapter<YearAdapter.YearViewHolder>() {
-
-    override fun getItemCount() : Int = Integer.MAX_VALUE
+    var onClick: ((year: Int) -> Unit)? = null
+    private val list = listOf(2023,2024,2025,2026,2027,2028,2029,2030)
+    override fun getItemCount() : Int = list.size
     override fun onCreateViewHolder(parent : ViewGroup, viewType : Int) : YearViewHolder = YearViewHolder.initialize(parent)
     override fun onBindViewHolder(holder : YearViewHolder, position : Int) {
-        holder.bindYear("")
+        holder.apply {
+            bindYear(list[position].toString())
+            itemView.setOnClickListener {
+                onClick?.invoke(list[position])
+            }
+        }
     }
 
 

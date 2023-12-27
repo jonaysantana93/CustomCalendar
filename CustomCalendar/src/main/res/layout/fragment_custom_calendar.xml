@@ -6,13 +6,13 @@
     android:orientation="vertical">
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/monthsRecyclerView"
+        android:id="@+id/yearsRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"/>
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/yearsRecyclerView"
+        android:id="@+id/monthsRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"/>

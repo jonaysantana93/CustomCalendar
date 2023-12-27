@@ -8,6 +8,7 @@ import com.jonay.customcalendar.adapter.LogAdapter
 import com.jonay.customcalendar.common.utils.viewBinding.viewBinding
 import com.jonay.customcalendar.databinding.ActivityMainBinding
 import com.jonay.customcalendar.enums.Months
+import com.jonay.customcalendar.enums.StartDayOfWeek
 
 class MainActivity : AppCompatActivity() {
     private val binding by viewBinding(ActivityMainBinding::inflate)
@@ -25,13 +26,14 @@ class MainActivity : AppCompatActivity() {
     private fun initCustomCalendar() {
         val list = listOf(22,25,30)
 
-        val options = CustomCalendarOptions().apply {
-            month = Months.FEBRUARY
+        val opt = CustomCalendarOptions().apply {
+            month = Months.JANUARY
+//            year = 2025
         }
 
         val customCalendar = CustomCalendar(
             context = this,
-            options = options,
+            options = opt,
             listOfEvents = list
         ).apply {
             onClick = {

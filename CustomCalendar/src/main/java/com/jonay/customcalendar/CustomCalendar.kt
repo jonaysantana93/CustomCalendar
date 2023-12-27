@@ -3,7 +3,6 @@ package com.jonay.customcalendar
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -19,16 +18,20 @@ import com.jonay.customcalendar.common.utils.viewBinding.viewBinding
 import com.jonay.customcalendar.databinding.CustomCalendarTextItemBinding
 import com.jonay.customcalendar.databinding.FragmentCustomCalendarBinding
 import com.jonay.customcalendar.enums.Months
+import com.jonay.customcalendar.enums.StartDayOfWeek
 import com.jonay.customcalendar.extensions.checkIfIsaPassDay
 import com.jonay.customcalendar.extensions.checkListOfEvents
 import com.jonay.customcalendar.extensions.getColumPosition
 import com.jonay.customcalendar.extensions.getDrawableResource
-import com.jonay.customcalendar.extensions.getDayOfWeek
 import com.jonay.customcalendar.extensions.getNameDaysOfTheWeek
 import com.jonay.customcalendar.extensions.getResource
+import com.jonay.customcalendar.extensions.getRowPosition
 import com.jonay.customcalendar.extensions.getTotalDaysInMonth
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Calendar.DAY_OF_MONTH
+import java.util.Calendar.MONTH
+import java.util.Calendar.YEAR
 
 
 class CustomCalendar(
@@ -41,24 +44,55 @@ class CustomCalendar(
 
     var onClick: ((day: Int) -> Unit)? = null
 
-    private var calendar: Calendar = Calendar.getInstance().apply { set(Calendar.MONTH, options.month.value) }
+    //TMP
+    private val startDay: StartDayOfWeek = StartDayOfWeek.SUNDAY
+
+    private val calendar: Calendar by lazy { Calendar.getInstance().apply {
+            set(MONTH, options.month.value)
+            set(YEAR, options.year)
+        }
+    }
     private var cellWidth = context.resources.getDimensionPixelSize(R.dimen.grid_cell_width)
     private var cellHeight = context.resources.getDimensionPixelSize(R.dimen.grid_cell_height)
-    private val currentDay: Int = Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
+    private val currentDay: Int by lazy { Calendar.getInstance().get(DAY_OF_MONTH) }
     private var daySelected: Int? = currentDay
     private var daySelectedView: CustomCalendarTextItemBinding? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        buildMonthsRecyclerView()
         buildYearRecyclerView()
+        buildMonthsRecyclerView()
+        initCalendarView()
+    }
 
+    private fun buildYearRecyclerView() = binding.apply {
+        val customAdapter = YearAdapter().apply {
+            onClick = {
+                options.year = it
+                calendar.set(YEAR, options.year)
+                initCalendarView()
+            }
+        }
 
-        val dayOfWeek = calendar.apply { set(2023, Calendar.FEBRUARY,16) }.get(Calendar.DAY_OF_WEEK)
-        val initialColum = (dayOfWeek-1)%7
+        yearsRecyclerView.apply {
+            layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+            adapter = customAdapter
+        }
+    }
 
-        Log.d("JOnay", "->")
-//        initCalendarView()
+    private fun buildMonthsRecyclerView() = binding.apply {
+        val customAdapter = MonthAdapter().apply {
+            onClick = {
+                options.month = Months.getCustomMonth(it)
+                calendar.set(MONTH, options.month.value)
+                initCalendarView()
+            }
+        }
+
+        monthsRecyclerView.apply {
+            layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+            adapter = customAdapter
+        }
     }
 
     @SuppressLint("SimpleDateFormat")
@@ -71,32 +105,8 @@ class CustomCalendar(
         buildAllDaysOfMonths()
     }
 
-    private fun buildMonthsRecyclerView() = binding.apply {
-        val customAdapter = MonthAdapter().apply {
-            onClick = {
-                options.month = Months.getCustomMonth(it)
-                calendar.set(Calendar.MONTH, options.month.value)
-                initCalendarView()
-            }
-        }
-
-        monthsRecyclerView.apply {
-            layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
-            adapter = customAdapter
-        }
-    }
-
-    private fun buildYearRecyclerView() = binding.apply {
-        val customAdapter = YearAdapter()
-
-        yearsRecyclerView.apply {
-            layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
-            adapter = customAdapter
-        }
-    }
-
     private fun buildDaysOfWeeks() {
-        val daysOfWeeks = calendar.getNameDaysOfTheWeek(options.startDay.value)
+        val daysOfWeeks = calendar.getNameDaysOfTheWeek(startDay.value)
         daysOfWeeks.forEachIndexed { i, name ->
             val textView = TextView(context).apply {
                 text = name
@@ -118,25 +128,9 @@ class CustomCalendar(
     }
 
     private fun buildAllDaysOfMonths() {
-        val totalDays = calendar.getTotalDaysInMonth()
-
-        for (day in 1..totalDays) {
-            val dayOfWeek = calendar.getDayOfWeek(day)
-
-            /*
-            day = 1
-            Colum = (this + 7 - startDay) % 7
-
-            Row = (  ) + 1
-
-
-
-                (firstDay + day - 1) / 7 + 1
-            */
-
-
-            val column = day.getColumPosition(options.startDay.value, dayOfWeek)
-            val row = (dayOfWeek + day - 1) / 7 + 1
+        for (day in 1..calendar.getTotalDaysInMonth()) {
+            val column = calendar.getColumPosition(day)
+            val row = calendar.getRowPosition(startDay.value, day)
 
             val params = GridLayout.LayoutParams().apply {
                 rowSpec = GridLayout.spec(GridLayout.UNDEFINED, GridLayout.FILL, 1f)
