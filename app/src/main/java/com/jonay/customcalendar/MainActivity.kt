@@ -24,18 +24,13 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("UseCompatLoadingForDrawables")
     private fun initCustomCalendar() {
-        val list = listOf(22,25,30)
-
         val opt = CustomCalendarOptions().apply {
+//            listOfEvents = listOf(22,25,30)
             month = Months.JANUARY
 //            year = 2025
         }
 
-        val customCalendar = CustomCalendar(
-            context = this,
-            options = opt,
-            listOfEvents = list
-        ).apply {
+        val customCalendar = CustomCalendar(context = this, options = opt).apply {
             onClick = {
                 logList.add("Day: $it clicked")
                 myAdapter.updateList(logList)

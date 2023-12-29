@@ -4,28 +4,28 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.jonay.customcalendar.common.interfaces.ViewHolderInitializerInterface
-import com.jonay.customcalendar.databinding.CustomCalendarMonthYearTextItemBinding
+import com.jonay.customcalendar.databinding.CustomCalendarYearTextItemBinding
 
-class YearAdapter: RecyclerView.Adapter<YearAdapter.YearViewHolder>() {
+class YearAdapter(private val currentYear: Int): RecyclerView.Adapter<YearAdapter.YearViewHolder>() {
     var onClick: ((year: Int) -> Unit)? = null
-    private val list = listOf(2023,2024,2025,2026,2027,2028,2029,2030)
-    override fun getItemCount() : Int = list.size
+
+    override fun getItemCount() : Int = Int.MAX_VALUE
     override fun onCreateViewHolder(parent : ViewGroup, viewType : Int) : YearViewHolder = YearViewHolder.initialize(parent)
     override fun onBindViewHolder(holder : YearViewHolder, position : Int) {
         holder.apply {
-            bindYear(list[position].toString())
+            val year = currentYear+position
+            bindYear(year.toString())
             itemView.setOnClickListener {
-                onClick?.invoke(list[position])
+                onClick?.invoke(year)
             }
         }
     }
 
-
-    class YearViewHolder(private val binding: CustomCalendarMonthYearTextItemBinding): RecyclerView.ViewHolder(binding.root){
+    class YearViewHolder(private val binding: CustomCalendarYearTextItemBinding): RecyclerView.ViewHolder(binding.root){
         companion object: ViewHolderInitializerInterface {
             override fun initialize(parent : ViewGroup) : YearViewHolder =
                 YearViewHolder(
-                    CustomCalendarMonthYearTextItemBinding.inflate(
+                    CustomCalendarYearTextItemBinding.inflate(
                         LayoutInflater.from(parent.context),
                         parent,
                         false

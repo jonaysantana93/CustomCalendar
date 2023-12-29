@@ -19,10 +19,11 @@ import com.jonay.customcalendar.databinding.CustomCalendarTextItemBinding
 import com.jonay.customcalendar.databinding.FragmentCustomCalendarBinding
 import com.jonay.customcalendar.enums.Months
 import com.jonay.customcalendar.enums.StartDayOfWeek
+import com.jonay.customcalendar.extensions.checkIfIsCurrentDay
 import com.jonay.customcalendar.extensions.checkIfIsaPassDay
 import com.jonay.customcalendar.extensions.checkListOfEvents
+import com.jonay.customcalendar.extensions.customClone
 import com.jonay.customcalendar.extensions.getColumPosition
-import com.jonay.customcalendar.extensions.getDrawableResource
 import com.jonay.customcalendar.extensions.getNameDaysOfTheWeek
 import com.jonay.customcalendar.extensions.getResource
 import com.jonay.customcalendar.extensions.getRowPosition
@@ -31,13 +32,14 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Calendar.DAY_OF_MONTH
 import java.util.Calendar.MONTH
+import java.util.Calendar.SHORT
 import java.util.Calendar.YEAR
+import java.util.Locale
 
 
 class CustomCalendar(
     private val context: Context,
-    private val options: CustomCalendarOptions = CustomCalendarOptions(),
-    private val listOfEvents: List<Int> = listOf()
+    private val options: CustomCalendarOptions = CustomCalendarOptions()
 ) : Fragment(R.layout.fragment_custom_calendar) {
 
     private val binding by viewBinding(FragmentCustomCalendarBinding::bind)
@@ -54,7 +56,8 @@ class CustomCalendar(
     }
     private var cellWidth = context.resources.getDimensionPixelSize(R.dimen.grid_cell_width)
     private var cellHeight = context.resources.getDimensionPixelSize(R.dimen.grid_cell_height)
-    private val currentDay: Int by lazy { Calendar.getInstance().get(DAY_OF_MONTH) }
+    private val currentDate by lazy { Calendar.getInstance() }
+    private val currentDay: Int by lazy { currentDate.get(DAY_OF_MONTH) }
     private var daySelected: Int? = currentDay
     private var daySelectedView: CustomCalendarTextItemBinding? = null
 
@@ -66,7 +69,7 @@ class CustomCalendar(
     }
 
     private fun buildYearRecyclerView() = binding.apply {
-        val customAdapter = YearAdapter().apply {
+        val customAdapter = YearAdapter(calendar.get(YEAR)).apply {
             onClick = {
                 options.year = it
                 calendar.set(YEAR, options.year)
@@ -80,18 +83,24 @@ class CustomCalendar(
         }
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     private fun buildMonthsRecyclerView() = binding.apply {
-        val customAdapter = MonthAdapter().apply {
-            onClick = {
-                options.month = Months.getCustomMonth(it)
-                calendar.set(MONTH, options.month.value)
-                initCalendarView()
+        calendar.getDisplayName(MONTH, SHORT, Locale.getDefault())?.let { currentMonth ->
+            val customAdapter = MonthAdapter(currentMonth).apply {
+                onClick = { month, position ->
+                    options.month = Months.getCustomMonth(month)
+                    calendar.set(MONTH, options.month.value)
+                    selectedPosition = position
+                    //ListEvents
+                    notifyDataSetChanged()
+                    initCalendarView()
+                }
             }
-        }
 
-        monthsRecyclerView.apply {
-            layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
-            adapter = customAdapter
+            monthsRecyclerView.apply {
+                layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+                adapter = customAdapter
+            }
         }
     }
 
@@ -157,23 +166,15 @@ class CustomCalendar(
                 setTextColor(options.dayTextColor.getResource(context))
             }
 
-            if (day.checkIfIsaPassDay(this, currentDay, options.passDayLockTextColor)) {
-                day.checkIfIsCurrentDay(this)
+            if (day.checkIfIsaPassDay(this, calendar.customClone(), currentDate, options.passDayLockTextColor)) {
+                day.checkIfIsCurrentDay(this, calendar.customClone(), currentDate, options)?.let { daySelectedView = it }
                 day.checkIfHaveEvent(this)
                 root.onclickListener(day, this)
             }
         }.root
 
-    private fun Int.checkIfIsCurrentDay(binding: CustomCalendarTextItemBinding) {
-        if (this == currentDay) {
-            binding.dayContainer.background = options.currentDayCellCustomDesign.getDrawableResource(context)
-            binding.dayText.setTextColor(options.dayTextColor.getResource(context))
-            daySelectedView = binding
-        }
-    }
-
     private fun Int.checkIfHaveEvent(binding : CustomCalendarTextItemBinding) {
-        if(this.checkListOfEvents(listOfEvents, currentDay)){
+        if(this.checkListOfEvents(options.listOfEvents, currentDay)){
             binding.apply {
                 dayContainer.setCardBackgroundColor(options.dayCellBackgroundWithEvent.getResource(context))
                 dayText.setTextColor(options.dayTextColorWithEvent.getResource(context))
@@ -183,11 +184,9 @@ class CustomCalendar(
 
     private fun ConstraintLayout.onclickListener(day: Int, binding: CustomCalendarTextItemBinding) {
         this.setOnClickListener {
-            if (day >= currentDay) {
-                clearOldSelectedDay()
-                binding.updateSelectedDay(day)
-                onClick?.invoke(day)
-            }
+            clearOldSelectedDay()
+            binding.updateSelectedDay(day)
+            onClick?.invoke(day)
         }
     }
 
@@ -204,7 +203,7 @@ class CustomCalendar(
             dayContainer.background = ContextCompat.getDrawable(context, R.drawable.cardview_border)
             dayText.setTextColor(R.color.black.getResource(context))
             daySelectedView = this
-        } else if (day.checkListOfEvents(listOfEvents, currentDay)){
+        } else if (day.checkListOfEvents(options.listOfEvents, currentDay)){
             dayContainer.setCardBackgroundColor(options.dayCellBackgroundWithEvent.getResource(context))
             dayText.setTextColor(options.dayTextColorWithEvent.getResource(context))
         } else  {
@@ -222,42 +221,6 @@ class CustomCalendar(
         }
         daySelected = day
     }
-
-//    private fun Calendar.getNamesOfMonths(): List<String> {
-//        val list = mutableListOf<String>()
-//        val currentMonth = this.get(Calendar.MONTH)
-//
-//        //We get the months using the current date
-//        for (month in currentMonth .. Calendar.DECEMBER){
-//            this.set(Calendar.MONTH, month)
-//            this.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale.getDefault())?.let {
-//                list.add(it)
-//            }
-//        }
-//
-//        //we get all months 100 time
-//        for (i in 0..100) {
-//            for (month in Calendar.JANUARY .. Calendar.DECEMBER){
-//                this.set(Calendar.MONTH, month)
-//                this.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale.getDefault())?.let {
-//                    list.add(it)
-//                }
-//            }
-//        }
-//
-//        return list
-//    }
-
-//    private fun Calendar.getYearsList(futureYears: Int = 100): List<String> {
-//        val listYears = mutableListOf<String>()
-//        val currentYear = this.get(Calendar.YEAR)
-//
-//        for (year in currentYear..(currentYear+futureYears)){
-//            listYears.add(year.toString())
-//        }
-//
-//        return listYears
-//    }
 }
 
 
