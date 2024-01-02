@@ -3,12 +3,15 @@ package com.jonay.customcalendar
 import android.annotation.SuppressLint
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.jonay.customcalendar.adapter.LogAdapter
 import com.jonay.customcalendar.common.utils.viewBinding.viewBinding
 import com.jonay.customcalendar.databinding.ActivityMainBinding
 import com.jonay.customcalendar.enums.Months
 import com.jonay.customcalendar.enums.StartDayOfWeek
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private val binding by viewBinding(ActivityMainBinding::inflate)
@@ -25,22 +28,26 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("UseCompatLoadingForDrawables")
     private fun initCustomCalendar() {
         val opt = CustomCalendarOptions().apply {
-//            listOfEvents = listOf(22,25,30)
-            month = Months.JANUARY
+            listOfEvents = listOf(22,25,30)
+//            month = Months.AUGUST
 //            year = 2025
         }
 
-        val customCalendar = CustomCalendar(context = this, options = opt).apply {
-            onClick = {
+        Calendar(
+            appActivity = this,
+            container = binding.calendarContainer.id,
+            options = opt
+        ).apply {
+            onDayClick = {
                 logList.add("Day: $it clicked")
                 myAdapter.updateList(logList)
                 binding.clickLog.smoothScrollToPosition(logList.size-1)
             }
-        }
 
-        supportFragmentManager.beginTransaction().apply {
-            replace(binding.calendarContainer.id, customCalendar)
-            commit()
+            updateListEvents = { month, year ->
+                //We need launch the query to get the new list of events
+                updateListOfEvents(emptyList())
+            }
         }
     }
 

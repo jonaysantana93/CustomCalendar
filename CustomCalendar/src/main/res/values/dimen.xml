@@ -5,4 +5,6 @@
 
     <dimen name="grid_cell_width">55dp</dimen>
     <dimen name="grid_cell_height">55dp</dimen>
+
+    <dimen name="cell_month_width">55dp</dimen>
 </resources>

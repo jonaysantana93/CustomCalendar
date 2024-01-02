@@ -11,9 +11,7 @@ import com.jonay.customcalendar.extensions.getNumberOfMonthWithName
 import com.jonay.customcalendar.extensions.getResource
 import java.util.Calendar
 
-//RecyclerView.Adapter -> ListAdapter - Replace
 class MonthAdapter(month: String?) : RecyclerView.Adapter<MonthAdapter.MonthViewHolder>() {
-//class MonthAdapter(month: String?) : ListAdapter<String,MonthAdapter.MonthViewHolder>(diffUtilItemCallback<String>()) {
     var onClick: ((month: Int, position: Int) -> Unit)? = null
 
     private val list = Calendar.getInstance().getNamesOfMonths()
@@ -31,7 +29,7 @@ class MonthAdapter(month: String?) : RecyclerView.Adapter<MonthAdapter.MonthView
         }
     }
 
-    class MonthViewHolder(private val binding: CustomCalendarMonthTextItemBinding): RecyclerView.ViewHolder(binding.root) {
+    class MonthViewHolder(val binding: CustomCalendarMonthTextItemBinding): RecyclerView.ViewHolder(binding.root) {
         companion object: ViewHolderInitializerInterface {
             override fun initialize(parent : ViewGroup) : MonthViewHolder =
                 MonthViewHolder(

@@ -11,9 +11,9 @@ import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.jonay.customcalendar.adapter.month.MonthAdapter
-import com.jonay.customcalendar.adapter.year.YearAdapter
 import com.jonay.customcalendar.common.utils.viewBinding.viewBinding
 import com.jonay.customcalendar.databinding.CustomCalendarTextItemBinding
 import com.jonay.customcalendar.databinding.FragmentCustomCalendarBinding
@@ -28,26 +28,31 @@ import com.jonay.customcalendar.extensions.getNameDaysOfTheWeek
 import com.jonay.customcalendar.extensions.getResource
 import com.jonay.customcalendar.extensions.getRowPosition
 import com.jonay.customcalendar.extensions.getTotalDaysInMonth
-import java.text.SimpleDateFormat
+import com.jonay.customcalendar.extensions.repeatOnLifecycleStarted
+import com.jonay.customcalendar.viewmodel.CustomCalendarViewModel
+import com.jonay.customcalendar.Calendar as CCalendar
 import java.util.Calendar
 import java.util.Calendar.DAY_OF_MONTH
+import java.util.Calendar.LONG
 import java.util.Calendar.MONTH
 import java.util.Calendar.SHORT
 import java.util.Calendar.YEAR
 import java.util.Locale
 
-
 class CustomCalendar(
     private val context: Context,
-    private val options: CustomCalendarOptions = CustomCalendarOptions()
+    private var onClick: ((day: Int) -> Unit)? = null,
+    private var updateEvents: ((month: Int, year: Int) -> Unit)? = null
 ) : Fragment(R.layout.fragment_custom_calendar) {
-
-    private val binding by viewBinding(FragmentCustomCalendarBinding::bind)
-
-    var onClick: ((day: Int) -> Unit)? = null
 
     //TMP
     private val startDay: StartDayOfWeek = StartDayOfWeek.SUNDAY
+
+    fun updateEvents(list: List<Int>) = viewModel.updateListOfEvents(list)
+
+    private val binding by viewBinding(FragmentCustomCalendarBinding::bind)
+    private val viewModel: CustomCalendarViewModel by viewModels()
+    private val options: CustomCalendarOptions = CCalendar.configOptions
 
     private val calendar: Calendar by lazy { Calendar.getInstance().apply {
             set(MONTH, options.month.value)
@@ -60,56 +65,55 @@ class CustomCalendar(
     private val currentDay: Int by lazy { currentDate.get(DAY_OF_MONTH) }
     private var daySelected: Int? = currentDay
     private var daySelectedView: CustomCalendarTextItemBinding? = null
+    private var customMonthAdapter: MonthAdapter? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        buildYearRecyclerView()
+        setUserInterfaceListener()
         buildMonthsRecyclerView()
         initCalendarView()
     }
 
-    private fun buildYearRecyclerView() = binding.apply {
-        val customAdapter = YearAdapter(calendar.get(YEAR)).apply {
-            onClick = {
-                options.year = it
-                calendar.set(YEAR, options.year)
-                initCalendarView()
+    @SuppressLint("NotifyDataSetChanged")
+    private fun setUserInterfaceListener() {
+        repeatOnLifecycleStarted {
+            viewModel.eventList.collect { list ->
+                list?.let {
+                    options.listOfEvents = it
+                    customMonthAdapter?.notifyDataSetChanged()
+                    initCalendarView()
+                }
             }
-        }
-
-        yearsRecyclerView.apply {
-            layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
-            adapter = customAdapter
         }
     }
 
     @SuppressLint("NotifyDataSetChanged")
     private fun buildMonthsRecyclerView() = binding.apply {
+        yearText.text = calendar.get(YEAR).toString()
+
         calendar.getDisplayName(MONTH, SHORT, Locale.getDefault())?.let { currentMonth ->
-            val customAdapter = MonthAdapter(currentMonth).apply {
+            customMonthAdapter = MonthAdapter(currentMonth).apply {
                 onClick = { month, position ->
                     options.month = Months.getCustomMonth(month)
                     calendar.set(MONTH, options.month.value)
                     selectedPosition = position
-                    //ListEvents
-                    notifyDataSetChanged()
-                    initCalendarView()
+                    updateEvents?.invoke(month, (calendar.get(YEAR)+position))
                 }
             }
 
             monthsRecyclerView.apply {
                 layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
-                adapter = customAdapter
+                adapter = customMonthAdapter
             }
         }
     }
 
     @SuppressLint("SimpleDateFormat")
     private fun initCalendarView() {
-        binding.apply {
-            monthName.text = SimpleDateFormat("MMMM").format(calendar.time)
-            gridCalendar.removeAllViews()
-        }
+        // We need delete this
+        binding.monthName.text = String.format("%s - %s", calendar.getDisplayName(MONTH, LONG, Locale.getDefault()), calendar.get(YEAR))
+        // --------------------
+        binding.gridCalendar.removeAllViews()
         buildDaysOfWeeks()
         buildAllDaysOfMonths()
     }
