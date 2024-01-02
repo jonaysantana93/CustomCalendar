@@ -3,6 +3,7 @@ package com.jonay.customcalendar
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -13,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.jonay.customcalendar.adapter.month.MonthAdapter
 import com.jonay.customcalendar.common.utils.viewBinding.viewBinding
 import com.jonay.customcalendar.databinding.CustomCalendarTextItemBinding
@@ -53,7 +55,6 @@ class CustomCalendar(
     private val binding by viewBinding(FragmentCustomCalendarBinding::bind)
     private val viewModel: CustomCalendarViewModel by viewModels()
     private val options: CustomCalendarOptions = CCalendar.configOptions
-
     private val calendar: Calendar by lazy { Calendar.getInstance().apply {
             set(MONTH, options.month.value)
             set(YEAR, options.year)
@@ -104,6 +105,7 @@ class CustomCalendar(
             monthsRecyclerView.apply {
                 layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
                 adapter = customMonthAdapter
+                addOnScrollListener(MonthsOnScrollListener(context))
             }
         }
     }
@@ -224,6 +226,45 @@ class CustomCalendar(
             }
         }
         daySelected = day
+    }
+}
+
+private class MonthsOnScrollListener(context: Context) : RecyclerView.OnScrollListener() {
+    val widthPixel = context.resources.getDimensionPixelSize(R.dimen.cell_month_width)
+
+    init {
+        Log.d("JONAY", "widthPixel -> $widthPixel")
+    }
+
+    override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+        super.onScrolled(recyclerView, dx, dy)
+        val pixelX = recyclerView.computeHorizontalScrollOffset()
+        Log.d("JONAY", "pixelX -> $pixelX")
+
+        if (widthPixel == pixelX){
+            Log.d("JONAY", "Dentro del if")
+        }
+
+
+
+//        val layoutManager = (recyclerView.layoutManager as LinearLayoutManager)
+//        if (dx >= 0){
+//            val lastVisibleItemPosition = layoutManager.findLastVisibleItemPosition()
+//            val viewHolder = recyclerView.findViewHolderForAdapterPosition(lastVisibleItemPosition)
+//            if (viewHolder != null && viewHolder is MonthAdapter.MonthViewHolder){
+//                viewHolder.binding.apply {
+//                    Log.d("JONAY", " 0> -> ${title.text}")
+//                }
+//            }
+//        } else {
+//            val firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition()
+//            val viewHolder = recyclerView.findViewHolderForAdapterPosition(firstVisibleItemPosition)
+//            if (viewHolder != null && viewHolder is MonthAdapter.MonthViewHolder){
+//                viewHolder.binding.apply {
+//                    Log.d("JONAY", " 0< -> ${title.text}")
+//                }
+//            }
+//        }
     }
 }
 

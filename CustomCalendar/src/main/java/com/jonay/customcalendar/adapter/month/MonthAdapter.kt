@@ -29,7 +29,7 @@ class MonthAdapter(month: String?) : RecyclerView.Adapter<MonthAdapter.MonthView
         }
     }
 
-    class MonthViewHolder(val binding: CustomCalendarMonthTextItemBinding): RecyclerView.ViewHolder(binding.root) {
+    class MonthViewHolder(private val binding: CustomCalendarMonthTextItemBinding): RecyclerView.ViewHolder(binding.root) {
         companion object: ViewHolderInitializerInterface {
             override fun initialize(parent : ViewGroup) : MonthViewHolder =
                 MonthViewHolder(
