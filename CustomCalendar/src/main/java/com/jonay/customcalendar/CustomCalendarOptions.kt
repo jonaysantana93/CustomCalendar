@@ -9,7 +9,7 @@ import java.util.Calendar
 class CustomCalendarOptions {
 //    val startDay: StartDayOfWeek = StartDayOfWeek.SUNDAY
     var month: Months = Months.getCurrentMonth()
-    var year: Int = Calendar.getInstance().get(Calendar.YEAR)
+//    var year: Int = Calendar.getInstance().get(Calendar.YEAR)
     var listOfEvents: List<Int> = listOf()
     @ColorRes var dayCellBackground:Int = R.color.white
     @ColorRes var dayTextColor: Int = R.color.black

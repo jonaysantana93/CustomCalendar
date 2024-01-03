@@ -2,15 +2,20 @@ package com.jonay.customcalendar
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Build
 import android.os.Bundle
+import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup.MarginLayoutParams
+import android.view.WindowManager
 import android.widget.GridLayout
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
+import androidx.core.view.marginStart
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -40,6 +45,7 @@ import java.util.Calendar.MONTH
 import java.util.Calendar.SHORT
 import java.util.Calendar.YEAR
 import java.util.Locale
+import kotlin.math.log
 
 class CustomCalendar(
     private val context: Context,
@@ -55,9 +61,10 @@ class CustomCalendar(
     private val binding by viewBinding(FragmentCustomCalendarBinding::bind)
     private val viewModel: CustomCalendarViewModel by viewModels()
     private val options: CustomCalendarOptions = CCalendar.configOptions
-    private val calendar: Calendar by lazy { Calendar.getInstance().apply {
+    private val calendar: Calendar by lazy { Calendar.getInstance()
+        .apply {
             set(MONTH, options.month.value)
-            set(YEAR, options.year)
+//            set(YEAR, options.year)
         }
     }
     private var cellWidth = context.resources.getDimensionPixelSize(R.dimen.grid_cell_width)
@@ -86,11 +93,24 @@ class CustomCalendar(
                 }
             }
         }
+
+        repeatOnLifecycleStarted {
+            viewModel.nextYearPosition.collect{ xPosition ->
+                binding.nextYearText.apply {
+                    val params = layoutParams as MarginLayoutParams
+                    params.marginStart = xPosition
+                    layoutParams = params
+                }
+
+                Log.d("JONAY", "nextYearPosition.xPosition -> $xPosition")
+            }
+        }
     }
 
     @SuppressLint("NotifyDataSetChanged")
     private fun buildMonthsRecyclerView() = binding.apply {
-        yearText.text = calendar.get(YEAR).toString()
+        currentYearText.text = calendar.get(YEAR).toString()
+        nextYearText.text = calendar.get(YEAR).plus(1).toString()
 
         calendar.getDisplayName(MONTH, SHORT, Locale.getDefault())?.let { currentMonth ->
             customMonthAdapter = MonthAdapter(currentMonth).apply {
@@ -98,14 +118,15 @@ class CustomCalendar(
                     options.month = Months.getCustomMonth(month)
                     calendar.set(MONTH, options.month.value)
                     selectedPosition = position
-                    updateEvents?.invoke(month, (calendar.get(YEAR)+position))
+                    updateEvents?.invoke(month, (calendar.get(YEAR) + position))
                 }
             }
 
             monthsRecyclerView.apply {
                 layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
                 adapter = customMonthAdapter
-                addOnScrollListener(MonthsOnScrollListener(context))
+                setHasFixedSize(true)
+                addOnScrollListener(MonthsOnScrollListener())
             }
         }
     }
@@ -172,17 +193,28 @@ class CustomCalendar(
                 setTextColor(options.dayTextColor.getResource(context))
             }
 
-            if (day.checkIfIsaPassDay(this, calendar.customClone(), currentDate, options.passDayLockTextColor)) {
-                day.checkIfIsCurrentDay(this, calendar.customClone(), currentDate, options)?.let { daySelectedView = it }
+            if (day.checkIfIsaPassDay(
+                    this,
+                    calendar.customClone(),
+                    currentDate,
+                    options.passDayLockTextColor
+                )
+            ) {
+                day.checkIfIsCurrentDay(this, calendar.customClone(), currentDate, options)
+                    ?.let { daySelectedView = it }
                 day.checkIfHaveEvent(this)
                 root.onclickListener(day, this)
             }
         }.root
 
-    private fun Int.checkIfHaveEvent(binding : CustomCalendarTextItemBinding) {
-        if(this.checkListOfEvents(options.listOfEvents, currentDay)){
+    private fun Int.checkIfHaveEvent(binding: CustomCalendarTextItemBinding) {
+        if (this.checkListOfEvents(options.listOfEvents, currentDay)) {
             binding.apply {
-                dayContainer.setCardBackgroundColor(options.dayCellBackgroundWithEvent.getResource(context))
+                dayContainer.setCardBackgroundColor(
+                    options.dayCellBackgroundWithEvent.getResource(
+                        context
+                    )
+                )
                 dayText.setTextColor(options.dayTextColorWithEvent.getResource(context))
             }
         }
@@ -205,21 +237,25 @@ class CustomCalendar(
     }
 
     private fun CustomCalendarTextItemBinding.checkLisOfEvents(day: Int) = this.apply {
-        if (day == currentDay){
+        if (day == currentDay) {
             dayContainer.background = ContextCompat.getDrawable(context, R.drawable.cardview_border)
             dayText.setTextColor(R.color.black.getResource(context))
             daySelectedView = this
-        } else if (day.checkListOfEvents(options.listOfEvents, currentDay)){
-            dayContainer.setCardBackgroundColor(options.dayCellBackgroundWithEvent.getResource(context))
+        } else if (day.checkListOfEvents(options.listOfEvents, currentDay)) {
+            dayContainer.setCardBackgroundColor(
+                options.dayCellBackgroundWithEvent.getResource(
+                    context
+                )
+            )
             dayText.setTextColor(options.dayTextColorWithEvent.getResource(context))
-        } else  {
+        } else {
             dayContainer.setCardBackgroundColor(R.color.white.getResource(context))
             dayText.setTextColor(R.color.black.getResource(context))
         }
     }
 
     private fun CustomCalendarTextItemBinding.updateSelectedDay(day: Int) {
-        if (day != currentDay){
+        if (day != currentDay) {
             daySelectedView = this.apply {
                 dayContainer.setCardBackgroundColor(R.color.light_gray.getResource(context))
                 dayText.setTextColor(R.color.white.getResource(context))
@@ -227,45 +263,56 @@ class CustomCalendar(
         }
         daySelected = day
     }
-}
 
-private class MonthsOnScrollListener(context: Context) : RecyclerView.OnScrollListener() {
-    val widthPixel = context.resources.getDimensionPixelSize(R.dimen.cell_month_width)
+    inner class MonthsOnScrollListener : RecyclerView.OnScrollListener() {
+        private val cellWidthPixels = context.resources.getDimensionPixelSize(R.dimen.cell_month_width)
+        private val totalWidthOfCellPixelsOneYear = cellWidthPixels.times(12)
+        private val screenWidthPixels = context.getScreenWidthResolution()
 
-    init {
-        Log.d("JONAY", "widthPixel -> $widthPixel")
-    }
+        private val startMonth = (calendar.get(MONTH)) //0..11 - Jan..Dec
+        private val startYear = calendar.get(YEAR) // 2024
+        private val totalWidthOfCellPixelsOneYearUsingStartMonth = cellWidthPixels.times(12-startMonth)
 
-    override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-        super.onScrolled(recyclerView, dx, dy)
-        val pixelX = recyclerView.computeHorizontalScrollOffset()
-        Log.d("JONAY", "pixelX -> $pixelX")
 
-        if (widthPixel == pixelX){
-            Log.d("JONAY", "Dentro del if")
+        override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+            super.onScrolled(recyclerView, dx, dy)
+            val scrollX = recyclerView.computeHorizontalScrollOffset()
+
+            if (scrollX > totalWidthOfCellPixelsOneYearUsingStartMonth-screenWidthPixels) { // Año != Año actual
+                val nextPosition = (screenWidthPixels-cellWidthPixels)-(scrollX-screenWidthPixels)
+                viewModel.setNextYearPosition(nextPosition)
+
+
+
+//                if (screenWidthPixels-xPositionEndScreen < 0) {
+//                    val nextPosition = screenWidthPixels - (scrollX-(screenWidthPixels/2))
+//                    viewModel.setNextYearPosition(nextPosition)
+//                }
+            } else { /*Es el año en curso */
+                viewModel.setNextYearPosition(screenWidthPixels)
+            }
         }
 
+        private fun Context.getScreenHeightResolution(): Int =
+            DisplayMetrics().apply {
+                setSystemDisplayWithMetric(this@getScreenHeightResolution, this)
+            }.heightPixels
 
+        private fun Context.getScreenWidthResolution(): Int =
+            DisplayMetrics().apply {
+                setSystemDisplayWithMetric(this@getScreenWidthResolution, this)
+            }.widthPixels
 
-//        val layoutManager = (recyclerView.layoutManager as LinearLayoutManager)
-//        if (dx >= 0){
-//            val lastVisibleItemPosition = layoutManager.findLastVisibleItemPosition()
-//            val viewHolder = recyclerView.findViewHolderForAdapterPosition(lastVisibleItemPosition)
-//            if (viewHolder != null && viewHolder is MonthAdapter.MonthViewHolder){
-//                viewHolder.binding.apply {
-//                    Log.d("JONAY", " 0> -> ${title.text}")
-//                }
-//            }
-//        } else {
-//            val firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition()
-//            val viewHolder = recyclerView.findViewHolderForAdapterPosition(firstVisibleItemPosition)
-//            if (viewHolder != null && viewHolder is MonthAdapter.MonthViewHolder){
-//                viewHolder.binding.apply {
-//                    Log.d("JONAY", " 0< -> ${title.text}")
-//                }
-//            }
-//        }
+        @Suppress("DEPRECATION")
+        private fun setSystemDisplayWithMetric(context: Context, metrics: DisplayMetrics) =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                context.display?.apply {
+                    getMetrics(metrics)
+                }
+            } else {
+                (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay?.apply {
+                    getMetrics(metrics)
+                }
+            }
     }
 }
-
-

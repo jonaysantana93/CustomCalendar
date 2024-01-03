@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity() {
     private fun initCustomCalendar() {
         val opt = CustomCalendarOptions().apply {
             listOfEvents = listOf(22,25,30)
-//            month = Months.AUGUST
+//            month = Months.OCTOBER
 //            year = 2025
         }
 
